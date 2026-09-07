@@ -11,7 +11,7 @@ import (
 // Want defines a type that can compare an error to an expected value or
 // property. The return of an empty string is idiomatically considered to
 // represent an expected `got` while any unexpected `error` is represented by a
-// non-empty string representing the diff. See [DiffMessage] for constructing
+// non-empty string representing the expectation. Use [Diff] to construct
 // canonical diffs.
 type Want interface {
 	ErrDiff(got error) string
@@ -20,16 +20,25 @@ type Want interface {
 // Diff compares the error with what is wanted. A nil [Want] corresponds to a
 // nil error.
 func Diff(got error, want Want) string {
+	if diff := wantMsg(got, want); diff != "" {
+		return DiffMessage(got, diff)
+	}
+	return ""
+}
+
+func wantMsg(got error, want Want) string {
 	if want == nil {
 		if got == nil {
 			return ""
 		}
-		return DiffMessage(got, "nil")
+		return "nil"
 	}
 	return want.ErrDiff(got)
 }
 
 // DiffMessage constructs a canonical diff message for use in test failures.
+//
+// Deprecated: use [Diff].
 func DiffMessage(got error, wantFormat string, a ...any) string {
 	format := fmt.Sprintf("got error %%v; want %s", wantFormat)
 	return fmt.Sprintf(format, append([]any{got}, a...)...)
@@ -50,7 +59,7 @@ func Is(target error) Want {
 		if errors.Is(got, target) {
 			return ""
 		}
-		return DiffMessage(got, "error that Is() %v", target)
+		return fmt.Sprintf("error that Is() %v", target)
 	})
 }
 
@@ -65,12 +74,9 @@ func As[T error](match func(got T) (expected string)) Want {
 	return Func(func(got error) string {
 		var target T
 		if !errors.As(got, &target) {
-			return DiffMessage(got, "error tree containing type %T", target)
+			return fmt.Sprintf("error tree containing type %T", target)
 		}
-		if d := match(target); d != "" {
-			return DiffMessage(got, "%s", d)
-		}
-		return ""
+		return match(target)
 	})
 }
 
@@ -80,7 +86,7 @@ func Equals(want error) Want {
 		if got == want {
 			return ""
 		}
-		return DiffMessage(got, "== %v", want)
+		return fmt.Sprintf("== %v", want)
 	})
 }
 
@@ -92,6 +98,22 @@ func Contains(substr string) Want {
 		if got != nil && strings.Contains(got.Error(), substr) {
 			return ""
 		}
-		return DiffMessage(got, "containing substring %q", substr)
+		return fmt.Sprintf("containing substring %q", substr)
+	})
+}
+
+// AnyOf checks that `got` matches at least one of the provided comparers.
+func AnyOf(a, b Want, rest ...Want) Want {
+	all := append([]Want{a, b}, rest...)
+
+	return Func(func(got error) string {
+		diffs := make([]string, len(all))
+		for i, w := range all {
+			diffs[i] = wantMsg(got, w)
+			if diffs[i] == "" {
+				return ""
+			}
+		}
+		return strings.Join(diffs, " OR ")
 	})
 }

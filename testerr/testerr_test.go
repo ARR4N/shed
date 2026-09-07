@@ -33,6 +33,12 @@ func ExampleDiff() {
 		return ""
 	})
 
+	wantNilOrOtherOr42 := testerr.AnyOf(
+		nil,
+		testerr.Equals(errOther),
+		want42,
+	)
+
 	tests := []struct {
 		name string
 		err  error // typically declared in the test loop
@@ -99,6 +105,21 @@ func ExampleDiff() {
 			err:  errUhOh,
 			want: want42,
 		},
+		{
+			name: "AnyOf() with matching nil",
+			err:  nil,
+			want: wantNilOrOtherOr42,
+		},
+		{
+			name: "AnyOf() with matching non-nil",
+			err:  errOther,
+			want: wantNilOrOtherOr42,
+		},
+		{
+			name: "AnyOf() without matches",
+			err:  errUhOh,
+			want: wantNilOrOtherOr42,
+		},
 	}
 
 	for _, tt := range tests {
@@ -150,4 +171,10 @@ func ExampleDiff() {
 	// got error val 43 is not good; want 42 (of course)
 	// --- As() with incorrect type ---
 	// got error uh oh; want error tree containing type testerr_test.myError
+	// --- AnyOf() with matching nil ---
+	// <empty>
+	// --- AnyOf() with matching non-nil ---
+	// <empty>
+	// --- AnyOf() without matches ---
+	// got error uh oh; want nil OR == something else OR error tree containing type testerr_test.myError
 }
