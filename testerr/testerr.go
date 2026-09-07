@@ -64,17 +64,20 @@ func Is(target error) Want {
 }
 
 // As creates a new `T` and checks that the `got` error can be unwrapped via
-// [errors.As] to said type. The unwrapped error is passed to `match()` for
-// checking.
+// [errors.As] to said type. The unwrapped error is passed to `match()`, if
+// non-nil, for checking. A nil `match` function allows all errors of type `T`.
 //
-// The return of an empty string from `match()` results in `ErrDiff()`
-// also returning an empty string. On mismatch there is no need to prepend the
+// The return of an empty string from `match()` results in `ErrDiff()` also
+// returning an empty string. On mismatch there is no need to prepend the
 // `expected` description with the `got` message. See the [Diff] example.
 func As[T error](match func(got T) (expected string)) Want {
 	return Func(func(got error) string {
 		var target T
 		if !errors.As(got, &target) {
 			return fmt.Sprintf("error tree containing type %T", target)
+		}
+		if match == nil {
+			return ""
 		}
 		return match(target)
 	})

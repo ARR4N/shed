@@ -8,14 +8,14 @@ import (
 	"github.com/arr4n/shed/testerr"
 )
 
-// myError is an internal error type that carries semantics for very precise
+// numError is an internal error type that carries semantics for very precise
 // error checking. In practice this could be, for example, a gRPC `Status` error
 // with its `Code` checked with [testerr.As].
-type myError struct {
+type numError struct {
 	val int
 }
 
-func (e myError) Error() string {
+func (e numError) Error() string {
 	return fmt.Sprintf("val %d is not good", e.val)
 }
 
@@ -24,9 +24,9 @@ func ExampleDiff() {
 	errWrapped := fmt.Errorf("wrapped(%w)", errUhOh)
 	errOther := errors.New("something else")
 
-	err42 := myError{42}
-	err43 := myError{43}
-	want42 := testerr.As(func(got myError) string {
+	err42 := numError{42}
+	err43 := numError{43}
+	want42 := testerr.As(func(got numError) string {
 		if got.val != 42 {
 			return "42 (of course)"
 		}
@@ -94,6 +94,11 @@ func ExampleDiff() {
 			name: "As() without diff from matcher function",
 			err:  err42,
 			want: want42,
+		},
+		{
+			name: "As() with correct type and no matcher function",
+			err:  err42,
+			want: testerr.As[numError](nil),
 		},
 		{
 			name: "As() with diff from matcher function",
@@ -167,14 +172,16 @@ func ExampleDiff() {
 	// got error <nil>; want containing substring ""
 	// --- As() without diff from matcher function ---
 	// <empty>
+	// --- As() with correct type and no matcher function ---
+	// <empty>
 	// --- As() with diff from matcher function ---
 	// got error val 43 is not good; want 42 (of course)
 	// --- As() with incorrect type ---
-	// got error uh oh; want error tree containing type testerr_test.myError
+	// got error uh oh; want error tree containing type testerr_test.numError
 	// --- AnyOf() with matching nil ---
 	// <empty>
 	// --- AnyOf() with matching non-nil ---
 	// <empty>
 	// --- AnyOf() without matches ---
-	// got error uh oh; want nil OR == something else OR error tree containing type testerr_test.myError
+	// got error uh oh; want nil OR == something else OR error tree containing type testerr_test.numError
 }
