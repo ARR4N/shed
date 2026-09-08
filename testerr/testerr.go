@@ -22,7 +22,7 @@ type Want interface {
 // [Want] corresponds to a nil error.
 func Diff(got error, want Want) string {
 	if u := unmetBy(got, want); u != "" {
-		return DiffMessage(got, u)
+		return fmt.Sprintf("got error %v; want %s", got, u)
 	}
 	return ""
 }
@@ -35,14 +35,6 @@ func unmetBy(got error, want Want) string {
 		return "nil"
 	}
 	return want.UnmetBy(got)
-}
-
-// DiffMessage constructs a canonical diff message for use in test failures.
-//
-// Deprecated: use [Diff].
-func DiffMessage(got error, wantFormat string, a ...any) string {
-	format := fmt.Sprintf("got error %%v; want %s", wantFormat)
-	return fmt.Sprintf(format, append([]any{got}, a...)...)
 }
 
 // A Func is an adaptor to convert an ordinary function into a [Want] by calling
