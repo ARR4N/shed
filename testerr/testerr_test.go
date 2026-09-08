@@ -125,6 +125,31 @@ func ExampleDiff() {
 			err:  errUhOh,
 			want: wantNilOrOtherOr42,
 		},
+		{
+			name: "AllOf() when all met",
+			err:  err42,
+			want: testerr.AllOf(
+				testerr.Is(err42),
+				testerr.As[numError](nil),
+			),
+		},
+		{
+			name: "AllOf() when none met",
+			err:  errUhOh,
+			want: testerr.AllOf(
+				testerr.Is(err42),
+				testerr.As[numError](nil),
+			),
+		},
+		{
+			name: "AllOf() when some met",
+			err:  err42,
+			want: testerr.AllOf(
+				testerr.Is(err42),
+				testerr.As[numError](nil),
+				nil, // impossible
+			),
+		},
 	}
 
 	for _, tt := range tests {
@@ -184,4 +209,10 @@ func ExampleDiff() {
 	// <empty>
 	// --- AnyOf() without matches ---
 	// got error uh oh; want nil OR == something else OR error tree containing type testerr_test.numError
+	// --- AllOf() when all met ---
+	// <empty>
+	// --- AllOf() when none met ---
+	// got error uh oh; want error that Is() val 42 is not good AND error tree containing type testerr_test.numError
+	// --- AllOf() when some met ---
+	// got error val 42 is not good; want nil AND 2 other condition(s) already met
 }

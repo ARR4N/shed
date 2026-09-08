@@ -13,6 +13,12 @@ import (
 // Otherwise it returns a description of the expectation alone, phrased to read
 // after the word "want" (e.g. "nil", or "error that Is() foo"); it MUST NOT
 // describe `got`, which [Diff] renders.
+//
+// Compositions of Want values ([AllOf], [AnyOf]) MAY note the existence of
+// sibling expectations already met by `got`, without describing `got` itself.
+// Although this is in tension with the requirement above, it stops a reader of
+// the failure message from "fixing" the reported expectation at the expense of
+// the unreported, already-met ones.
 type Want interface {
 	UnmetBy(got error) (expectation string)
 }
@@ -109,5 +115,27 @@ func AnyOf(a, b Want, rest ...Want) Want {
 			}
 		}
 		return strings.Join(unmet, " OR ")
+	})
+}
+
+// AllOf checks that `got` matches every [Want] value.
+func AllOf(ws ...Want) Want {
+	return Func(func(got error) string {
+		unmet := make([]string, 0, len(ws))
+		for _, w := range ws {
+			if u := unmetBy(got, w); u != "" {
+				unmet = append(unmet, u)
+			}
+		}
+
+		if n := len(unmet); n == 0 {
+			return ""
+		} else if met := len(ws) - n; met > 0 {
+			unmet = append(
+				unmet,
+				fmt.Sprintf("%d other condition(s) already met", met),
+			)
+		}
+		return strings.Join(unmet, " AND ")
 	})
 }
